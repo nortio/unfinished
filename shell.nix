@@ -6,6 +6,7 @@ pkgs.mkShell {
 		clang_18
 		gnumake
 		bear
+		gcc14
 	];
 	buildInputs = with pkgs; [
 		SDL2.dev

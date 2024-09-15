@@ -95,7 +95,8 @@ typedef enum {
     ELEMENT_UL,
     ELEMENT_ADDRESS,
     ELEMENT_XMP,
-    ELEMENT_PLAINTEXT
+    ELEMENT_PLAINTEXT,
+    ELEMENT_A,
 } ElementType;
 
 // Some tags allow omitting the end tags. According to mdn <p> is one of them. There are also others such as <dd> and
@@ -126,32 +127,39 @@ int tag_omission_table[32][32] = {
     [ELEMENT_ADDRESS] = {ELEMENT_UL, ELEMENT_LI},
     [ELEMENT_XMP] = {0},
     [ELEMENT_PLAINTEXT] = {0},
-};
+    [ELEMENT_A] = {0}};
 
 typedef struct {
     int ptsize;
     int renderstyle;
 } TextStyle;
 
-TextStyle element_font_map[] = {
-    [ELEMENT_ROOT] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_CUSTOM] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_HEADER] = {.ptsize = 0, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_BODY] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_TITLE] = {.ptsize = 0, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_H1] = {.ptsize = 18, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_H2] = {.ptsize = 16, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_H3] = {.ptsize = 14, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_H4] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_H5] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_H6] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_P] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_DL] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_DT] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
-    [ELEMENT_DD] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_LI] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_UL] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
-    [ELEMENT_ADDRESS] = {.ptsize = 12, .renderstyle = TTF_STYLE_ITALIC},
+TextStyle element_font_map[] = {[ELEMENT_ROOT] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_CUSTOM] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_HEADER] = {.ptsize = 0, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_BODY] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_TITLE] = {.ptsize = 0, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_H1] = {.ptsize = 18, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_H2] = {.ptsize = 16, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_H3] = {.ptsize = 14, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_H4] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_H5] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_H6] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_P] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_DL] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_DT] = {.ptsize = 12, .renderstyle = TTF_STYLE_BOLD},
+                                [ELEMENT_DD] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_LI] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_UL] = {.ptsize = 12, .renderstyle = TTF_STYLE_NORMAL},
+                                [ELEMENT_ADDRESS] = {.ptsize = 12, .renderstyle = TTF_STYLE_ITALIC},
+                                [ELEMENT_A] = {.ptsize = 12, .renderstyle = TTF_STYLE_UNDERLINE}};
+
+int block_elements[] = {
+    [ELEMENT_ROOT] = 0, [ELEMENT_CUSTOM] = 0, [ELEMENT_HEADER] = 0,  [ELEMENT_BODY] = 0, [ELEMENT_TITLE] = 0,
+    [ELEMENT_H1] = 1,   [ELEMENT_H2] = 1,     [ELEMENT_H3] = 1,      [ELEMENT_H4] = 1,   [ELEMENT_H5] = 1,
+    [ELEMENT_H6] = 1,   [ELEMENT_P] = 1,      [ELEMENT_DL] = 0,      [ELEMENT_DT] = 0,   [ELEMENT_DD] = 0,
+    [ELEMENT_LI] = 0,   [ELEMENT_UL] = 0,     [ELEMENT_ADDRESS] = 0, [ELEMENT_XMP] = 0,  [ELEMENT_PLAINTEXT] = 0,
+    [ELEMENT_A] = 0,
 };
 
 typedef struct Element {
@@ -206,20 +214,19 @@ int span_cmp(Span *s1, Span *s2) {
     return 0;
 }
 
-// make function which checks equality
-int span_str_cmp(Span *s1, char *str, int len) {
-    size_t min_len = s1->len < len ? s1->len : len;
-    for (size_t i = 0; i < min_len; i++) {
-        uint8_t diff = s1->data[i] - str[i];
-        if (diff != 0) {
-            return diff;
-        }
+int span_equals(Span *s1, Span *s2) {
+    if (s1->len != s2->len) {
+        return 0;
     }
 
-    return 0;
+    if (span_cmp(s1, s2) != 0) {
+        return 0;
+    }
+
+    return 1;
 }
 
-#define SPAN_STR_CMP(s1, str) span_str_cmp(s1, str, sizeof(str))
+#define SPAN_STR_EQUALS(s1, str) span_equals(s1, &(Span){.data = (uint8_t *)str, .len = sizeof(str) - 1})
 
 int is_end_tag_omissable(ElementType type) {
     int *tags = tag_omission_table[type];
@@ -248,36 +255,38 @@ ElementType get_type_from_name(Span name) {
     str_tolower(lower.data, lower.len);
     ElementType final = ELEMENT_CUSTOM;
 
-    if (!SPAN_STR_CMP(&lower, "header")) {
+    if (SPAN_STR_EQUALS(&lower, "header")) {
         final = ELEMENT_HEADER;
-    } else if (!SPAN_STR_CMP(&lower, "h1")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h1")) {
         final = ELEMENT_H1;
-    } else if (!SPAN_STR_CMP(&lower, "h2")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h2")) {
         final = ELEMENT_H2;
-    } else if (!SPAN_STR_CMP(&lower, "h3")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h3")) {
         final = ELEMENT_H3;
-    } else if (!SPAN_STR_CMP(&lower, "h4")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h4")) {
         final = ELEMENT_H4;
-    } else if (!SPAN_STR_CMP(&lower, "h5")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h5")) {
         final = ELEMENT_H5;
-    } else if (!SPAN_STR_CMP(&lower, "h6")) {
+    } else if (SPAN_STR_EQUALS(&lower, "h6")) {
         final = ELEMENT_H6;
-    } else if (!SPAN_STR_CMP(&lower, "p")) {
+    } else if (SPAN_STR_EQUALS(&lower, "p")) {
         final = ELEMENT_P;
-    } else if (!SPAN_STR_CMP(&lower, "body")) {
+    } else if (SPAN_STR_EQUALS(&lower, "body")) {
         final = ELEMENT_BODY;
-    } else if (!SPAN_STR_CMP(&lower, "dl")) {
+    } else if (SPAN_STR_EQUALS(&lower, "dl")) {
         final = ELEMENT_DL;
-    } else if (!SPAN_STR_CMP(&lower, "dt")) {
+    } else if (SPAN_STR_EQUALS(&lower, "dt")) {
         final = ELEMENT_DT;
-    } else if (!SPAN_STR_CMP(&lower, "dd")) {
+    } else if (SPAN_STR_EQUALS(&lower, "dd")) {
         final = ELEMENT_DD;
-    } else if (!SPAN_STR_CMP(&lower, "li")) {
+    } else if (SPAN_STR_EQUALS(&lower, "li")) {
         final = ELEMENT_LI;
-    } else if (!SPAN_STR_CMP(&lower, "ul")) {
+    } else if (SPAN_STR_EQUALS(&lower, "ul")) {
         final = ELEMENT_UL;
-    } else if (!SPAN_STR_CMP(&lower, "address")) {
+    } else if (SPAN_STR_EQUALS(&lower, "address")) {
         final = ELEMENT_ADDRESS;
+    } else if (SPAN_STR_EQUALS(&lower, "a")) {
+        final = ELEMENT_A;
     }
 
     span_free(&lower);
@@ -738,10 +747,7 @@ int parse(Node *initial_root, Token *tokens, size_t len) {
                 // I don't know why I'm considering the custom element case, there is no tag that
                 // can be broken by a ELEMENT_CUSTOM... (modern browsers agree, tag with omissable ends
                 // can't be broken by any element, but only by a few)
-                if ((current_node->element.type != ELEMENT_CUSTOM &&
-                     current_node->element.type == root->element.type) ||
-                    (current_node->element.type == ELEMENT_CUSTOM &&
-                     span_cmp(&root->element.name, &current_node->element.name) == 0)) {
+                if (current_node->element.type == root->element.type) {
                     if (root->parent != NULL) {
                         root = root->parent;
                     }
@@ -749,7 +755,7 @@ int parse(Node *initial_root, Token *tokens, size_t len) {
                 break;
             }
 
-            if (span_cmp(&root->element.name, &current_node->element.name)) {
+            if (!span_equals(&root->element.name, &current_node->element.name)) {
                 break;
             }
 
@@ -769,44 +775,74 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 SDL_Surface *surface;
 
-int y = 0;
+int str_remove_empty_chars(char *str, int len, int replace_newlines) {
+    int found = 0;
+    int newlen = len;
+    for (int i = 0; i < newlen; i++) {
+        uint8_t byte = str[i];
+        if (is_text(byte)) {
+            continue;
+        }
 
-void render(Node *node, int ypar) {
-    if (node->type != NODE_TYPE_TEXT) {
+        if (byte == '\n' && replace_newlines) {
+            str[i] = ' ';
+            continue;
+        }
+
+        found++;
+        memmove(&str[i], &str[i + 1], newlen - i - 1);
+        i--;
+        newlen--;
+        str[newlen] = '\0';
+    }
+    return newlen;
+}
+
+void render(Node *node, int *y, int *x) {
+    if (node->type == NODE_TYPE_TEXT && !is_empty_str_span(node->text)) {
+        if (node->parent != NULL) {
+            TextStyle current_style = element_font_map[node->parent->element.type];
+            TTF_SetFontStyle(font, current_style.renderstyle);
+            TTF_SetFontSize(font, current_style.ptsize);
+        } else {
+            TTF_SetFontSize(font, 12);
+            TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
+        }
+        int replace_newlines = 1;
+        char *str = node->text.data;
+/*         if (node->parent->element.type == ELEMENT_P) {
+            replace_newlines = 1;
+        } */
+        node->text.len = str_remove_empty_chars(str, node->text.len, replace_newlines);
+        // DEBUG("%s", str);
+        SDL_Surface *text_surface = TTF_RenderText(font, str, black, white);
+        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+        int width = text_surface->w;
+        int height = text_surface->h;
+
+        SDL_FreeSurface(text_surface);
+
+        SDL_Rect pos = {.h = height, .w = width, .x = *x, .y = *y};
+        SDL_RenderCopy(renderer, text_texture, NULL, &pos);
+        if (block_elements[node->parent->element.type]) {
+            *y += height;
+            *x = 0;
+        } else {
+            *x += width;
+        }
+
+        // LOG("[%s] data: %s\n", node_type_char_map[node->type], node->text.data);
+        // DEBUG("%d", y);
         return;
     }
-    if (is_empty_str_span(node->text)) {
-        return;
-    }
-    if (node->parent == NULL) {
-        return;
-    }
-
-    TextStyle current_style = element_font_map[node->parent->element.type];
-    TTF_SetFontStyle(font, current_style.renderstyle);
-    TTF_SetFontSize(font, current_style.ptsize);
-
-    char *str = node->text.data;
-    // DEBUG("%s", str);
-    SDL_Surface *text_surface = TTF_RenderText(font, str, black, white);
-    SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-    int width = text_surface->w;
-    int height = text_surface->h;
-
-    SDL_FreeSurface(text_surface);
-    SDL_Rect pos = {.h = height, .w = width, .x = 0, .y = y};
-    SDL_RenderCopy(renderer, text_texture, NULL, &pos);
-    y += height;
-
-    // LOG("[%s] data: %s\n", node_type_char_map[node->type], node->text.data);
-    // DEBUG("%d", y);
 
     if (list_empty(&node->children)) {
         return;
     }
+
     LinkedListNode *el = node->children.head;
     while (el) {
-        render(el->element, y);
+        render(el->element, y, x);
         el = el->next;
     }
 }
@@ -847,7 +883,6 @@ int main(int argc, char *argv[]) {
     print_node_tree(&root_node, 0);
 
     // TIME TO RENDER!!! Will I make it in time?
-
     SDL_Event event;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -855,7 +890,7 @@ int main(int argc, char *argv[]) {
         return 3;
     }
 
-    if (SDL_CreateWindowAndRenderer(800, 600, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
+    if (SDL_CreateWindowAndRenderer(800, 600, 0, &window, &renderer)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window and renderer: %s", SDL_GetError());
         return 3;
     }
@@ -890,7 +925,8 @@ int main(int argc, char *argv[]) {
             SDL_RenderClear(renderer);
 
             int y = 0;
-            render(&root_node, y);
+            int x = 0;
+            render(&root_node, &y, &x);
 
             SDL_RenderPresent(renderer);
 

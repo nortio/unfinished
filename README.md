@@ -13,5 +13,10 @@ Run with
 ```
 main <html file>
 ```
+Updated screenshot with some more progress:
+
+![updated screenshot](screen-2.png)
+
+Old screenshot:
 
 ![screen](screen.png)
